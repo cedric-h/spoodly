@@ -31,17 +31,17 @@ impl fmt::Display for Var {
     }
 }
 impl Var {
-    pub fn call(&self, args: Vec<Var>) -> Var {
+    pub fn call(&self, args: Vec<Var>) -> Result<Var, String> {
         use Var::*;
 
         match self {
-            Raw(a) => panic!("{:?} isn't a function!", a),
-            List(_) => panic!("Can't call a list!"),
-            Function(f) => (*f)(args),
+            Raw(_) => Err(format!("{} isn't a function!", self)),
+            List(_) => Err(format!("Can't call list {}!", self)),
+            Function(f) => Ok((*f)(args)),
         }
     }
 
-    pub fn num(&self) -> Result<f64, ()> {
+    pub fn num(&self) -> Result<f64, String> {
         match self {
             Var::Raw(r) => match r {
                 Raw::Number(n) => Ok(*n),
@@ -49,11 +49,11 @@ impl Var {
                     if let Ok(n) = t.parse() {
                         Ok(n)
                     } else {
-                        Err(())
+                        Err("String contained unparseable number.".to_string())
                     }
-                },
+                }
             },
-            _ => Err(()),
+            _ => Err("Can't parse functions into numbers".to_string()),
         }
     }
 
@@ -112,7 +112,7 @@ impl Evaluator {
         }
     }
 
-    pub fn eval(&mut self, mut ast: Ast, ctx: usize) -> Var {
+    pub fn eval(&mut self, mut ast: Ast, ctx: usize) -> Result<Var, String> {
         let mut vars = Vec::new();
 
         while let Some(node) = ast.pop() {
@@ -122,35 +122,35 @@ impl Evaluator {
                     let children = children.iter().rev().map(|x| x.clone()).collect();
                     eprintln!("evaluating block, depth: {}", ctx);
                     let new_ctx = self.new_ctx(ctx);
-                    vars.push(self.eval(children, new_ctx))
+                    vars.push(self.eval(children, new_ctx)?)
                 }
                 Node::Assign(id, val_node) => {
-                    let to = self.eval(vec![*val_node], ctx);
+                    let to = self.eval(vec![*val_node], ctx)?;
                     eprintln!("assigning {}", id);
                     self.assign(ctx, id, to);
                 }
                 Node::Call(id, arg_node) => {
                     eprintln!("call arg_node: {:?}", arg_node);
-                    let arg = self.eval(vec![*arg_node], ctx);
+                    let arg = self.eval(vec![*arg_node], ctx)?;
 
-                    vars.push(self.fetch(ctx, id).call(match arg {
+                    vars.push(self.fetch(ctx, id)?.call(match arg {
                         Var::List(args) => args,
                         _ => vec![arg],
-                    }));
+                    })?);
                 }
                 Node::Value(raw) => vars.push(Var::Raw(raw)),
-                Node::Var(id) => vars.push(match self.fetch(ctx, id) {
+                Node::Var(id) => vars.push(match self.fetch(ctx, id)? {
                     Var::Raw(r) => Var::Raw(r.clone()),
-                    Var::Function(_) => panic!("no using functions as variables yet"),
-                    Var::List(_) => panic!("no using lists as variables yet"),
+                    Var::Function(_) => return Err("no using functions as variables yet".to_string()),
+                    Var::List(_) => return Err("no using lists as variables yet".to_string()),
                 }),
             }
         }
 
-        match vars.len() {
+        Ok(match vars.len() {
             1 => vars.pop().unwrap(),
             _ => Var::List(vars),
-        }
+        })
     }
 
     fn new_ctx(&mut self, parent: usize) -> usize {
@@ -161,16 +161,15 @@ impl Evaluator {
         self.contexts.len() - 1
     }
 
-    fn fetch(&self, ctx: usize, id: String) -> &Var {
+    fn fetch(&self, ctx: usize, id: String) -> Result<&Var, String> {
         let Context { map, parent } = &self.contexts[ctx];
-        if let Some(var) = map.get(&id).or_else({
-            let id = id.clone();
-            move || parent.map(move |parent| self.fetch(parent, id))
-        }) {
-            var
-        } else {
-            panic!("couldn't find variable with identifier {}", id);
-        }
+        map
+            .get(&id)
+            .or_else({
+                let id = id.clone();
+                move || parent.and_then(move |parent| self.fetch(parent, id).ok())
+            })
+            .ok_or(format!("couldn't find variable with identifier {}", id))
     }
 
     fn assign(&mut self, ctx: usize, id: String, to: Var) -> Option<Var> {
@@ -181,7 +180,12 @@ impl Evaluator {
 #[test]
 fn test_eval() {
     fn eval<S: Into<String>>(source: S) -> Var {
-        Evaluator::new(Context::std()).eval(vec![parse(source.into())], 0)
+        Evaluator::new(Context::std())
+            .eval(
+                vec![parse(source.into()).expect("couldn't parse source in eval test")],
+                0,
+            )
+            .expect("error evaluating")
     }
     fn eval_raw<S: Into<String>>(source: S) -> Raw {
         match eval(source) {
@@ -366,11 +370,11 @@ impl Parser {
     }
 }
 
-pub fn parse<S: Into<String>>(src: S) -> Node {
-    Parser::new(tokenize(src.into()))
+pub fn parse<S: Into<String>>(src: S) -> Result<Node, String> {
+    Parser::new(tokenize(src.into())?)
         .parse(Ast::new())
         .pop()
-        .expect("no output")
+        .ok_or("no output".to_string())
 }
 
 #[test]
@@ -378,17 +382,17 @@ fn test_parse() {
     use Node::*;
 
     assert_eq!(
-        parse("s <- 3"),
+        parse("s <- 3").unwrap(),
         Assign("s".to_string(), Box::new(Value(Raw::Number(3.0)))),
     );
 
     assert_eq!(
-        parse("s<-3"),
+        parse("s<-3").unwrap(),
         Assign("s".to_string(), Box::new(Value(Raw::Number(3.0)))),
     );
 
     assert_eq!(
-        parse("s<-3+2+7"),
+        parse("s<-3+2+7").unwrap(),
         Assign(
             "s".to_string(),
             Box::new(Call(
@@ -411,7 +415,8 @@ fn test_parse() {
         parse(
             "s <- 3
              DISPLAY(s)"
-        ),
+        )
+        .unwrap(),
         Block(vec![
             Assign("s".to_string(), Box::new(Value(Raw::Number(3.0)))),
             Call("DISPLAY".to_string(), Box::new(Var("s".to_string())),)
@@ -431,7 +436,8 @@ fn test_parse() {
             DISPLAY(l)
             DISPLAY(a)\
         "
-        ),
+        )
+        .unwrap(),
         Block(vec![
             Assign("s".to_string(), Box::new(Value(Raw::Number(3.0)))),
             Assign("l".to_string(), Box::new(Value(Raw::Number(4.0)))),
@@ -472,7 +478,7 @@ enum Token {
     Identifier(String),
 }
 
-fn tokenize<S: Into<String>>(source: S) -> Vec<Token> {
+fn tokenize<S: Into<String>>(source: S) -> Result<Vec<Token>, String> {
     use Token::*;
 
     let mut tokens: Vec<Token> = vec![BlockOpen, BlockOpen];
@@ -513,7 +519,7 @@ fn tokenize<S: Into<String>>(source: S) -> Vec<Token> {
                     // do nothing
                 } else if c.is_alphanumeric() || c == '"' {
                     let mut name = c.to_string();
-                    
+
                     if c != '"' {
                         while let Some(fc) = chars.peek() {
                             if fc.is_alphanumeric() {
@@ -535,7 +541,7 @@ fn tokenize<S: Into<String>>(source: S) -> Vec<Token> {
                     if c == '"' {
                         // pushing it if it's a string literal.
                         if !(chars.next() == Some('"')) {
-                            panic!("Unfinished string literal {}", name);
+                            return Err("Unfinished String Literal!".to_string());
                         }
                         name.remove(0);
                         token_push!(StringLiteral(name));
@@ -557,7 +563,7 @@ fn tokenize<S: Into<String>>(source: S) -> Vec<Token> {
     }
 
     token_push!(BlockClose, BlockClose);
-    tokens
+    Ok(tokens)
 }
 
 #[test]
@@ -565,7 +571,7 @@ fn test_tokenize() {
     use Token::*;
 
     assert_eq!(
-        tokenize("s <- 3"),
+        tokenize("s <- 3").unwrap(),
         #[rustfmt::skip]
         [
             BlockOpen,
@@ -579,7 +585,7 @@ fn test_tokenize() {
     );
 
     assert_eq!(
-        tokenize("s<-3"),
+        tokenize("s<-3").unwrap(),
         #[rustfmt::skip]
         [
             BlockOpen,
@@ -593,7 +599,7 @@ fn test_tokenize() {
     );
 
     assert_eq!(
-        tokenize("s <- 3 + 2"),
+        tokenize("s <- 3 + 2").unwrap(),
         #[rustfmt::skip]
         [
             BlockOpen,
@@ -608,7 +614,7 @@ fn test_tokenize() {
         ]
     );
     assert_eq!(
-        tokenize("s<-3+2"),
+        tokenize("s<-3+2").unwrap(),
         #[rustfmt::skip]
         [
             BlockOpen,
@@ -629,7 +635,8 @@ fn test_tokenize() {
             s <- 3
             DISPLAY(s)\
         "
-        ),
+        )
+        .unwrap(),
         #[rustfmt::skip]
         [
             BlockOpen,
@@ -653,7 +660,8 @@ fn test_tokenize() {
             s<-3
             DISPLAY(s)\
         "
-        ),
+        )
+        .unwrap(),
         #[rustfmt::skip]
         [
             BlockOpen,
@@ -684,7 +692,8 @@ fn test_tokenize() {
             DISPLAY(l)
             DISPLAY(a)\
         "
-        ),
+        )
+        .unwrap(),
         #[rustfmt::skip]
         vec![
             BlockOpen,
