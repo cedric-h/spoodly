@@ -145,7 +145,9 @@ impl Evaluator {
                 Node::Value(raw) => vars.push(Var::Raw(raw)),
                 Node::Var(id) => vars.push(match self.fetch(ctx, id)? {
                     Var::Raw(r) => Var::Raw(r.clone()),
-                    Var::Function(_) => return Err("no using functions as variables yet".to_string()),
+                    Var::Function(_) => {
+                        return Err("no using functions as variables yet".to_string())
+                    }
                     Var::List(_) => return Err("no using lists as variables yet".to_string()),
                 }),
             }
@@ -167,8 +169,7 @@ impl Evaluator {
 
     fn fetch(&self, ctx: usize, id: String) -> Result<&Var, String> {
         let Context { map, parent } = &self.contexts[ctx];
-        map
-            .get(&id)
+        map.get(&id)
             .or_else({
                 let id = id.clone();
                 move || parent.and_then(move |parent| self.fetch(parent, id).ok())
@@ -276,7 +277,7 @@ impl Parser {
         Self { tokens }
     }
 
-    fn parse(&mut self, mut ast: Ast) -> Ast {
+    fn parse(&mut self, mut ast: Ast) -> Result<Ast, String> {
         if let Some(token) = self.tokens.pop() {
             //eprintln!("got {:?}", token);
             match token {
@@ -286,7 +287,7 @@ impl Parser {
                         let token = self
                             .tokens
                             .last()
-                            .expect("blocks ain't supposed to close like that");
+                            .ok_or("blocks ain't supposed to close like that".to_string())?;
                         match token {
                             // remove the block then leave.
                             Token::BlockClose => {
@@ -294,7 +295,7 @@ impl Parser {
                                 break;
                             }
                             _ => {
-                                block_nodes = self.parse(block_nodes);
+                                block_nodes = self.parse(block_nodes)?;
                             }
                         }
                     }
@@ -304,7 +305,7 @@ impl Parser {
                     match self
                         .tokens
                         .last()
-                        .expect("something's gotta follow an identifier")
+                        .ok_or("something's gotta follow an identifier".to_string())?
                     {
                         // if a storage arrow comes after the identifier,
                         // they're trying to assign the variable to a new value.
@@ -312,8 +313,10 @@ impl Parser {
                             // remove the storage arrow because who would want that
                             self.tokens.pop();
                             // grab the thing after the arrow
-                            let next_node =
-                                self.parse(Ast::new()).pop().expect("arrow left us hangin'");
+                            let next_node = self
+                                .parse(Ast::new())?
+                                .pop()
+                                .ok_or("arrow left us hangin'".to_string())?;
                             // push a new Assign Node into the AST where
                             // the Var we've found is assigned to the next_node.
                             //eprintln!("adding assign");
@@ -326,7 +329,9 @@ impl Parser {
                             ast.push(Node::Call(
                                 a,
                                 Box::new(
-                                    self.parse(Ast::new()).pop().expect("nothing after assign"),
+                                    self.parse(Ast::new())?
+                                        .pop()
+                                        .ok_or("nothing after assign".to_string())?,
                                 ),
                             ));
                         }
@@ -345,21 +350,22 @@ impl Parser {
                     ast.push(Node::Value(Raw::Number(n)));
                 }
                 Token::BinaryOperation(op_name) => {
-                    let left = ast.pop().expect("add what dude?");
+                    let left = ast.pop().ok_or("add what dude?".to_string())?;
                     ast.push(Node::Call(
                         op_name.clone(),
                         Box::new(Node::Block(vec![
                             left,
-                            self.parse(Ast::new())
+                            self.parse(Ast::new())?
                                 .pop()
-                                .expect(&format!("can't {} nothing", op_name)),
+                                .ok_or(&format!("can't {} nothing", op_name))?,
                         ])),
                     ));
                 }
                 _ => {}
             }
         }
-        ast.into_iter()
+        Ok(ast
+            .into_iter()
             .map(|node| match node {
                 Node::Block(mut children) => {
                     if children.len() == 1 {
@@ -370,13 +376,13 @@ impl Parser {
                 }
                 a => a,
             })
-            .collect()
+            .collect())
     }
 }
 
 pub fn parse<S: Into<String>>(src: S) -> Result<Node, String> {
     Parser::new(tokenize(src.into())?)
-        .parse(Ast::new())
+        .parse(Ast::new())?
         .pop()
         .ok_or("no output".to_string())
 }
@@ -545,7 +551,7 @@ fn tokenize<S: Into<String>>(source: S) -> Result<Vec<Token>, String> {
                     if c == '"' {
                         // pushing it if it's a string literal.
                         if !(chars.next() == Some('"')) {
-                            return Err("Unfinished String Literal!".to_string());
+                            return Err("Unfinished string literal".to_string());
                         }
                         name.remove(0);
                         token_push!(StringLiteral(name));

@@ -65,8 +65,13 @@ DISPLAY(a)
 
     Rust.cspeudo.then(function( cspeudo ) {
 		function updateOutput() {
-			document.getElementById("output").textContent = "Interpretation Output:\n";
-			let output = cspeudo.interpret(editor.getValue());
+			let output = document.getElementById("output");
+			output.textContent = "Interpretation Output:\n";
+			let error = cspeudo.interpret(editor.getValue());
+			
+			if (error.length > 0) {
+				output.textContent += error;
+			}
 		}
 
 		// update output as soon as loaded, to show output of example

@@ -2,19 +2,17 @@ use stdweb::{__js_raw_asm, js, js_export};
 
 #[js_export]
 fn interpret(src: String) -> String {
+    use cspeudo::{eval, Context, Raw, Var};
     use std::collections::HashMap;
-    use cspeudo::{Context, Raw, Var, eval};
 
     let mut map = HashMap::new();
     map.insert(
         "DISPLAY".to_string(),
         Var::Function(Box::new(|args: Vec<Var>| {
             //eprintln!("args len: {}", args.len());
-            let output = args
-                .iter()
-                .fold(String::new(), |acc, arg| {
-                    format!("{} {}", acc, arg).trim().to_owned()
-                });
+            let output = args.iter().fold(String::new(), |acc, arg| {
+                format!("{} {}", acc, arg).trim().to_owned()
+            });
 
             {
                 let output = output.clone();
@@ -28,9 +26,15 @@ fn interpret(src: String) -> String {
         "INPUT".to_string(),
         Var::Function(Box::new(|mut args: Vec<Var>| {
             //eprintln!("args len: {}", args.len());
-            let prompt = format!("{}", args.pop().unwrap_or(Var::Raw(Raw::Text("input".to_string()))));
+            let prompt = format!(
+                "{}",
+                args.pop()
+                    .unwrap_or(Var::Raw(Raw::Text("input".to_string())))
+            );
 
-            let input = js! { return input(@{prompt}); }.into_string().expect("didn't give string in input");
+            let input = js! { return input(@{prompt}); }
+                .into_string()
+                .expect("didn't give string in input");
 
             Var::Raw(Raw::Text(input))
         })),
@@ -49,7 +53,7 @@ fn interpret(src: String) -> String {
     let ctx = Context { map, parent: None };
 
     match eval(src, ctx) {
-        Ok(output) => format!("{}", output),
+        Ok(output) => String::new(),
         Err(msg) => msg,
     }
 }
