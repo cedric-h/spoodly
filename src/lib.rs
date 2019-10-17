@@ -2,6 +2,10 @@
 use std::collections::HashMap;
 use std::fmt;
 
+pub fn eval<S: Into<String>>(src: S, ctx: Context) -> Result<Var, String> {
+    Evaluator::new(ctx).eval(vec![parse(src)?], 0)
+}
+
 pub enum Var {
     Raw(Raw),
     List(Vec<Var>),

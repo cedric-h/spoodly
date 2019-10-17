@@ -1,19 +1,19 @@
-use stdweb::{__js_raw_asm, js, console, js_export};
+use stdweb::{__js_raw_asm, js, js_export};
 
 #[js_export]
-fn interpret(source: String) -> String {
+fn interpret(src: String) -> String {
     use std::collections::HashMap;
-    use cspeudo::{parse, Context, Evaluator, Raw, Var};
+    use cspeudo::{Context, Raw, Var, eval};
 
     let mut map = HashMap::new();
     map.insert(
         "DISPLAY".to_string(),
-        Var::Function(Box::new(|mut args: Vec<Var>| {
+        Var::Function(Box::new(|args: Vec<Var>| {
             //eprintln!("args len: {}", args.len());
-            let mut output = args
+            let output = args
                 .iter()
                 .fold(String::new(), |acc, arg| {
-                    format!("{} {}", acc, arg)
+                    format!("{} {}", acc, arg).trim().to_owned()
                 });
 
             {
@@ -46,10 +46,12 @@ fn interpret(source: String) -> String {
             ))
         })),
     );
-    let mut evalr = Evaluator::new(Context { map, parent: None });
-    let output = evalr.eval(vec![parse(source)], 0);
+    let ctx = Context { map, parent: None };
 
-    format!("{}", output)
+    match eval(src, ctx) {
+        Ok(output) => format!("{}", output),
+        Err(msg) => msg,
+    }
 }
 
 fn main() {
