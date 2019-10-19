@@ -2,7 +2,8 @@ using NUnit.Framework;
 
 namespace tests
 {
-    public class Tests
+    [TestFixture]
+    public class TestLexer
     {
         [SetUp]
         public void Setup()

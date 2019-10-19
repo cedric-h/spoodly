@@ -1,3 +1,6 @@
 {
-    "csharp.referencesCodeLens.enabled": false
+    "csharp.referencesCodeLens.enabled": false,
+    "cSpell.words": [
+        "spoodly"
+    ]
 }

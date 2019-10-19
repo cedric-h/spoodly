@@ -5,35 +5,31 @@ using System.Collections.Generic;
 namespace spoodly
 {
     // Cursed code lol
+    public class LexerRule
+    {
+        public static char[] AnyChar = new char[] { (char) 0xFF };
+    }
+
     public class LexerRule<T>
     {
-        public enum TransitionStates
-        {
-            Next,
-            Self,
-            Previous
-        }
-        public static char[] AnyChar = Enumerable.Range(0, char.MaxValue+1).Select(i => (char) i).Where(c => !char.IsControl(c)).ToArray();
-        //private int stateCounter = 0;
         private struct StateStruct
         {
             public char[] arr;
             public int i;
             public T token;
         }
-        private static Dictionary<char, int> MaxStates = new Dictionary<char, int>();
+
+        private static int totalStates = 1;
         private Dictionary<(char c, int state), (int state, T token)> LutDictionary;
         private Stack<StateStruct> ActionStack;
-        //private StateStruct currentState;
-        private int currentStateIndex;
-        private int stateStateIndex;
+        private Stack<int> StateStack;
 
         public LexerRule(Dictionary<(char c, int state), (int state, T token)> dictionary)
         {
             LutDictionary = dictionary;
             ActionStack = new Stack<StateStruct>();
-            currentStateIndex = 0;
-            stateStateIndex = 0;
+            StateStack = new Stack<int>();
+            StateStack.Push(0); // Default state is 0
         }
         
         // Pushes the current state
@@ -46,7 +42,7 @@ namespace spoodly
             ActionStack.Push(new StateStruct()
             {
                 arr = c,
-                i = currentStateIndex,
+                i = GetCurrentState(),
                 token = token
             });
             return this;
@@ -57,21 +53,7 @@ namespace spoodly
         // Keeps the current state
         public LexerRule<T> MatchAny(char[] c, T token)
         {
-            DoTransition(c, currentStateIndex, currentStateIndex, token);
-            return this;
-        }
-
-        // Applies all current states
-        public LexerRule<T> Then(Action<LexerRule<T>> a)
-        {
-            currentStateIndex++;
-            while(ActionStack.Count > 0)
-            {
-                var st = ActionStack.Pop();
-                DoTransition(st.arr, st.i, currentStateIndex, st.token);
-            }
-            a.Invoke(this);
-            currentStateIndex--;
+            DoTransition(c, GetCurrentState(), GetCurrentState(), token);
             return this;
         }
 
@@ -82,33 +64,46 @@ namespace spoodly
         // References previous state
         public LexerRule<T> Until(char[] c, T token)
         {
-            DoTransition(c, currentStateIndex, currentStateIndex-1, token);
+            DoTransition(c, GetCurrentState(), GetPreviousState(), token);
             return this;
         }
 
-        private void SafeSetLut(char c, int from, int to, T token)
+        // Applies all current states
+        public LexerRule<T> Then(Action<LexerRule<T>> a) => Then(1, a);
+
+        // Applies all current states
+        public LexerRule<T> Then(int n, Action<LexerRule<T>> a)
         {
-            int v = 0;
-            if(MaxStates.TryGetValue(c, out v))
+            int next = GetNextState();
+            StateStack.Push(next);
+
+            while(ActionStack.Count > 0)
             {
-                v++;
-                MaxStates[c] = Math.Max(v, from);
-                LutDictionary[(c, v)] = (to, token);
+                var ak = ActionStack.Pop();
+                DoTransition(ak.arr, ak.i, next, ak.token);
             }
+
+            a?.Invoke(this);
+            StateStack.Pop();
+            return this;
         }
 
         private void DoTransition(char[] c, int from, int to, T token)
         {
-            if(c == null)
-            {
-                LutDictionary[((char) 0xFF, from)] = (to, token);
-                return;
-            }
             foreach(char x in c)
-            {
                 LutDictionary[(x, from)] = (to, token);
-            }
         }
+
+        private int GetPreviousState()
+        {
+            var cur = StateStack.Pop();
+            var prv = StateStack.Peek();
+            StateStack.Push(cur);
+            return prv;
+        }
+
+        private int GetCurrentState() => StateStack.Peek();
+        private int GetNextState() => totalStates++;
     }
 
     public class DynamicLexer
@@ -117,15 +112,15 @@ namespace spoodly
         public DynamicLexer()
         {
             Lut = new Dictionary<(char c, int state), (int state, LexerToken token)>();
-            new LexerRule<LexerToken>(Lut).MatchAny((char[]) null, LexerToken.Unknown);
+            new LexerRule<LexerToken>(Lut).MatchAny(LexerRule.AnyChar, LexerToken.Unknown);
             new LexerRule<LexerToken>(Lut)
                 .Match('"', LexerToken.StringLiteral)
             .Then((t1) =>
-                t1.MatchAny((char[]) null, LexerToken.StringLiteral)
+                t1.MatchAny(LexerRule.AnyChar, LexerToken.StringLiteral)
                     .Until('"', LexerToken.StringLiteral)
                     .Match('\\', LexerToken.StringLiteral)
                 .Then((t2) =>
-                    t2.Until((char[]) null, LexerToken.StringLiteral)
+                    t2.Until(LexerRule.AnyChar, LexerToken.StringLiteral)
                 )
             );
             new LexerRule<LexerToken>(Lut)
