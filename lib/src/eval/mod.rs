@@ -4,7 +4,10 @@ pub use var::Var;
 mod context;
 pub use context::Context;
 
-use super::{Raw, ast::{Node, Ast}};
+use super::{
+    ast::{Ast, Node},
+    Raw,
+};
 
 /// An Evaluator evalutes source code and stores the Context that
 /// source code is run inside of an manipulates/stores variables in.
@@ -152,4 +155,3 @@ fn test_eval() {
         ]
     )
 }
-

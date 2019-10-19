@@ -1,5 +1,5 @@
+use crate::{eval::Var, Raw};
 use std::collections::HashMap;
-use crate::{Raw, eval::Var};
 
 /// This guys stores which variables are available in a given scope.
 /// Scopes have parents; if they don't know about a variable, they'll

@@ -1,12 +1,12 @@
 #![feature(stmt_expr_attributes)]
 
 pub mod eval;
-pub mod parse;
 pub mod lex;
+pub mod parse;
 
 pub use eval::{Context, Evaluator};
-pub use parse::{parse, ast};
 pub use lex::tokenize;
+pub use parse::{ast, parse};
 
 /// Returns the Result (which might be an error!) of running the source String that's provided.
 /// # Panics:

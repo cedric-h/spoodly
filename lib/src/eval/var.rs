@@ -1,5 +1,5 @@
-use std::fmt;
 use super::Raw;
+use std::fmt;
 
 /// A value that can be manipulated.
 /// These tend to be stored in Contexts.
@@ -66,4 +66,3 @@ impl Var {
         }
     }
 }
-
