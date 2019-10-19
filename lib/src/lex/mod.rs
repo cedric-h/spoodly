@@ -65,8 +65,10 @@ pub fn tokenize<S: Into<String>>(source: S) -> Result<Vec<Token>, String> {
             '\n' => {
                 token_push!(BlockClose, BlockOpen);
             }
-            '(' => token_push!(BlockOpen),
-            ')' => token_push!(BlockClose),
+            '{' => token_push!(BlockOpen),
+            '}' => token_push!(BlockClose),
+            '(' => token_push!(ArgsOpen),
+            ')' => token_push!(ArgsClose),
             '+' | '-' | '*' | '/' | '^' => token_push!(BinaryOperation(c.to_string())),
             c => {
                 if c.is_whitespace() {
@@ -197,9 +199,9 @@ fn test_tokenize() {
                     BlockClose,
                 BlockClose,
                 BlockOpen,
-                    Identifier("DISPLAY".to_string()), BlockOpen,
+                    Identifier("DISPLAY".to_string()), ArgsOpen,
                         Identifier("s".to_string()),
-                    BlockClose,
+                    ArgsClose,
                 BlockClose,
             BlockClose,
         ]
@@ -222,9 +224,9 @@ fn test_tokenize() {
                     BlockClose,
                 BlockClose,
                 BlockOpen,
-                    Identifier("DISPLAY".to_string()), BlockOpen,
+                    Identifier("DISPLAY".to_string()), ArgsOpen,
                         Identifier("s".to_string()),
-                    BlockClose,
+                    ArgsClose,
                 BlockClose,
             BlockClose,
         ]
@@ -279,19 +281,19 @@ fn test_tokenize() {
                     BlockClose,
                 BlockClose,
                 BlockOpen,
-                    Identifier("DISPLAY".to_string()), BlockOpen,
+                    Identifier("DISPLAY".to_string()), ArgsOpen,
                         Identifier("s".to_string()),
-                    BlockClose,
+                    ArgsClose,
                 BlockClose,
                 BlockOpen,
-                    Identifier("DISPLAY".to_string()), BlockOpen,
+                    Identifier("DISPLAY".to_string()), ArgsOpen,
                         Identifier("l".to_string()),
-                    BlockClose,
+                    ArgsClose,
                 BlockClose,
                 BlockOpen,
-                    Identifier("DISPLAY".to_string()), BlockOpen,
+                    Identifier("DISPLAY".to_string()), ArgsOpen,
                         Identifier("a".to_string()),
-                    BlockClose,
+                    ArgsClose,
                 BlockClose,
             BlockClose,
         ]

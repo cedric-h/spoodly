@@ -24,7 +24,7 @@ impl Parser {
         if let Some(token) = self.tokens.pop() {
             //eprintln!("got {:?}", token);
             match token {
-                Token::BlockOpen => {
+                Token::BlockOpen | Token::ArgsOpen => {
                     let mut block_nodes = Ast::new();
                     loop {
                         let token = self
@@ -33,7 +33,7 @@ impl Parser {
                             .ok_or("blocks ain't supposed to close like that".to_string())?;
                         match token {
                             // remove the block then leave.
-                            Token::BlockClose => {
+                            Token::BlockClose | Token::ArgsClose => {
                                 self.tokens.pop();
                                 break;
                             }
@@ -42,7 +42,12 @@ impl Parser {
                             }
                         }
                     }
-                    ast.push(Node::Block(block_nodes));
+                    match token {
+                        Token::BlockOpen => ast.push(Node::Block(block_nodes)),
+                        Token::ArgsOpen => ast.push(Node::List(block_nodes)),
+                        _ => {},
+                    }
+
                 }
                 Token::Identifier(a) => {
                     match self
@@ -68,20 +73,21 @@ impl Parser {
 
                         // if a new block follows the identifier,
                         // it must be a function call.
-                        Token::BlockOpen => {
+                        Token::ArgsOpen => {
+                            println!("fn");
                             ast.push(Node::Call(
                                 a,
-                                Box::new(
-                                    self.parse(Ast::new())?
-                                        .pop()
-                                        .ok_or("nothing after assign".to_string())?,
-                                ),
+                                match self.parse(Ast::new())?.pop().ok_or("no args for function".to_string())? {
+                                    Node::List(items) => items,
+                                    _ => return Err("Only Lists can be used as function arguments".to_string()),
+                                }
                             ));
                         }
 
                         // if neither of these follow an identifier,
                         // it must just be a reference to a variable.
                         _ => {
+                            println!("returning a variable!");
                             ast.push(Node::Var(a));
                         }
                     }
@@ -96,12 +102,12 @@ impl Parser {
                     let left = ast.pop().ok_or("add what dude?".to_string())?;
                     ast.push(Node::Call(
                         op_name.clone(),
-                        Box::new(Node::Block(vec![
+                        vec!(
                             left,
                             self.parse(Ast::new())?
                                 .pop()
                                 .ok_or(&format!("can't {} nothing", op_name))?,
-                        ])),
+                        ),
                     ));
                 }
                 _ => {}
@@ -137,45 +143,62 @@ fn test_parse() {
     use Node::*;
 
     assert_eq!(
-        parse("s <- 3").unwrap(),
-        Assign("s".to_string(), Box::new(Value(Raw::Number(3.0)))),
+        parse("s <- 3"),
+        Ok(Assign("s".to_string(), Box::new(Value(Raw::Number(3.0))))),
     );
 
     assert_eq!(
-        parse("s<-3").unwrap(),
-        Assign("s".to_string(), Box::new(Value(Raw::Number(3.0)))),
+        parse("s<-3"),
+        Ok(Assign("s".to_string(), Box::new(Value(Raw::Number(3.0))))),
     );
 
     assert_eq!(
-        parse("s<-3+2+7").unwrap(),
-        Assign(
+        parse("3+2+7"),
+        Ok(
+            Call(
+                "+".to_string(),
+                vec!(
+                    Call(
+                        "+".to_string(),
+                        vec!(
+                            Value(Raw::Number(3.0)),
+                            Value(Raw::Number(2.0)),
+                        ),
+                    ),
+                    Value(Raw::Number(7.0)),
+                )
+            )),
+    );
+
+    assert_eq!(
+        parse("s<-3+2+7"),
+        Ok(Assign(
             "s".to_string(),
             Box::new(Call(
                 "+".to_string(),
-                Box::new(Block(vec![
+                vec![
                     Call(
                         "+".to_string(),
-                        Box::new(Block(vec![
+                        vec!(
                             Value(Raw::Number(3.0)),
                             Value(Raw::Number(2.0)),
-                        ])),
+                        ),
                     ),
                     Value(Raw::Number(7.0)),
-                ]))
+                ]
             )),
-        )
+        ))
     );
 
     assert_eq!(
         parse(
             "s <- 3
              DISPLAY(s)"
-        )
-        .unwrap(),
-        Block(vec![
+        ),
+        Ok(Block(vec![
             Assign("s".to_string(), Box::new(Value(Raw::Number(3.0)))),
-            Call("DISPLAY".to_string(), Box::new(Var("s".to_string())),)
-        ]),
+            Call("DISPLAY".to_string(), vec!(Var("s".to_string())),)
+        ])),
     );
 
     assert_eq!(
@@ -191,9 +214,8 @@ fn test_parse() {
             DISPLAY(l)
             DISPLAY(a)\
         "
-        )
-        .unwrap(),
-        Block(vec![
+        ),
+        Ok(Block(vec![
             Assign("s".to_string(), Box::new(Value(Raw::Number(3.0)))),
             Assign("l".to_string(), Box::new(Value(Raw::Number(4.0)))),
             Assign("a".to_string(), Box::new(Value(Raw::Number(1.0)))),
@@ -201,7 +223,7 @@ fn test_parse() {
                 "s".to_string(),
                 Box::new(Call(
                     "+".to_string(),
-                    Box::new(Block(vec![Var("a".to_string()), Value(Raw::Number(5.0))])),
+                    vec![Var("a".to_string()), Value(Raw::Number(5.0))],
                 ))
             ),
             Assign("l".to_string(), Box::new(Var("a".to_string()))),
@@ -209,12 +231,12 @@ fn test_parse() {
                 "a".to_string(),
                 Box::new(Call(
                     "+".to_string(),
-                    Box::new(Block(vec![Var("a".to_string()), Value(Raw::Number(3.0))])),
+                    vec!(Var("a".to_string()), Value(Raw::Number(3.0))),
                 ))
             ),
-            Call("DISPLAY".to_string(), Box::new(Var("s".to_string()))),
-            Call("DISPLAY".to_string(), Box::new(Var("l".to_string()))),
-            Call("DISPLAY".to_string(), Box::new(Var("a".to_string()))),
-        ]),
+            Call("DISPLAY".to_string(), vec!(Var("s".to_string()))),
+            Call("DISPLAY".to_string(), vec!(Var("l".to_string()))),
+            Call("DISPLAY".to_string(), vec!(Var("a".to_string()))),
+        ])),
     );
 }

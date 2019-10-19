@@ -31,20 +31,35 @@ impl Evaluator {
         while let Some(node) = ast.pop() {
             eprintln!("evaluating {:?}", node);
             match node {
+                // Block is like a list, except the commands inside get their own scope
+                // and only the last element is returned.
                 Node::Block(children) => {
                     let children = children.iter().rev().map(|x| x.clone()).collect();
                     eprintln!("evaluating block, depth: {}", ctx);
                     let new_ctx = self.new_ctx(ctx);
-                    vars.push(self.eval(children, new_ctx)?)
+                    let mut result = self.eval(children, new_ctx)?;
+                    if let Var::List(mut children) = result {
+                        result = if children.len() > 0 {
+                            children.pop().expect("length was greater than one but pop yielded nothing")
+                        } else {
+                            Var::List(vec![])
+                        }
+                    }
+
+                    vars.push(result)
+                }
+                Node::List(children) => {
+                    let children = children.iter().rev().map(|x| x.clone()).collect();
+                    vars.push(self.eval(children, ctx)?)
                 }
                 Node::Assign(id, val_node) => {
                     let to = self.eval(vec![*val_node], ctx)?;
                     eprintln!("assigning {}", id);
                     self.assign(ctx, id, to);
                 }
-                Node::Call(id, arg_node) => {
-                    eprintln!("call arg_node: {:?}", arg_node);
-                    let arg = self.eval(vec![*arg_node], ctx)?;
+                Node::Call(id, args) => {
+                    //eprintln!("call arg_node: {:?}", arg_node);
+                    let arg = self.eval(args, ctx)?;
 
                     vars.push(self.fetch(ctx, id)?.call(match arg {
                         Var::List(args) => args,
@@ -110,18 +125,6 @@ fn test_eval() {
             _ => panic!("eval_raw can't return that; must be function or list"),
         }
     }
-    fn eval_list<S: Into<String>>(source: S) -> Vec<Raw> {
-        match eval(source) {
-            Var::List(l) => l
-                .into_iter()
-                .map(|v| match v {
-                    Var::Raw(r) => r,
-                    _ => panic!("list or raws not allowed inside list"),
-                })
-                .collect(),
-            _ => panic!("even_list can't return that; must be function or raw"),
-        }
-    }
 
     assert_eq!(eval_raw("DISPLAY(3)"), Raw::Text("3".to_string()));
 
@@ -135,7 +138,7 @@ fn test_eval() {
         Raw::Text("12".to_string())
     );
     assert_eq!(
-        eval_list(
+        eval_raw(
             "\
             s <- 3
             l <- 4
@@ -148,10 +151,8 @@ fn test_eval() {
             DISPLAY(a)\
         "
         ),
-        vec![
-            Raw::Text("14".to_string()),
-            Raw::Text("1".to_string()),
+            //Raw::Text("14".to_string()),
+            //Raw::Text("1".to_string()),
             Raw::Text("4".to_string()),
-        ]
     )
 }

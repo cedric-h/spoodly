@@ -7,11 +7,12 @@ pub type Ast = Vec<Node>;
 pub enum Node {
     // holders
     Block(Ast),
+    List(Ast),
     Value(Raw),
     Var(String),
     // commands
     Assign(String, Box<Node>),
-    Call(String, Box<Node>),
+    Call(String, Vec<Node>),
 }
 impl Node {
     pub fn new_block() -> Self {
