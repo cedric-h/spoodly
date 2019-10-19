@@ -40,10 +40,11 @@ namespace spoodly
         // Char Literals
         CharLiteral
     }
-    
+
     public class Lexer
     {
         private Dictionary<(char c, LexerState state), (LexerState state, LexerToken token)> Lut;
+
         // TODO: I don't really like building the grammar like this... Maybe use Linq?
         public Lexer()
         {

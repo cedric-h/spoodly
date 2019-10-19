@@ -6,13 +6,12 @@ namespace spoodly
     class Program
     {
         static void Main(string[] args)
-        {
-            var lex = new Lexer();
-            string text = "\"1\\\" 6.7e-11\"6.7e-11";
-            Console.WriteLine($"{text}");
-
+        {   
             Stopwatch sw = new Stopwatch();
             sw.Start();
+            var lex = new DynamicLexer();
+            string text = "0x12345";
+            Console.WriteLine($"{text}");
             var tokens = lex.Parse(text);
             sw.Stop();
             
