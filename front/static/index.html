@@ -70,7 +70,10 @@ DISPLAY(a)
 			let error = spoodly.interpret(editor.getValue());
 			
 			if (error.length > 0) {
-				output.textContent += error;
+				let errorMsg = document.createElement("strong");
+				errorMsg.style.color = "red";
+				errorMsg.textContent = "ERR: " + error;
+				output.appendChild(errorMsg);
 			}
 		}
 
