@@ -5,6 +5,7 @@ use stdweb::{__js_raw_asm, js, js_export};
 fn interpret(src: String) -> String {
     use spoodly::{Context, Raw, eval::Var};
 
+    // start with the normal STD, and override it as neccessary.
     let mut webstd = Context::std();
     webstd.map.insert(
         "DISPLAY".to_string(),

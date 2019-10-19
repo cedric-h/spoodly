@@ -17,12 +17,11 @@ impl Context {
         let mut map = HashMap::new();
         map.insert(
             "DISPLAY".to_string(),
-            Var::Function(Box::new(|mut args: Vec<Var>| {
-                //eprintln!("args len: {}", args.len());
-                let mut output = String::new();
-                while let Some(var) = args.pop() {
-                    output = format!("{} {}", output, var).trim().to_owned();
-                }
+            Var::Function(Box::new(|args: Vec<Var>| {
+                let output = args.iter().fold(String::new(), |acc, arg| {
+                    format!("{} {}", acc, arg).trim().to_owned()
+                });
+                print!("{}", output);
                 Var::Raw(Raw::Text(output))
             })),
         );
