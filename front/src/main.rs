@@ -1,9 +1,9 @@
 use stdweb::{__js_raw_asm, js, js_export};
 
 #[js_export]
-// wraps cspeudo::interpret and provides the web STD.
+// wraps spoodly::interpret and provides the web STD.
 fn interpret(src: String) -> String {
-    use cspeudo::{Context, Raw, eval::Var};
+    use spoodly::{Context, Raw, eval::Var};
     use std::collections::HashMap;
 
     let mut map = HashMap::new();
@@ -53,7 +53,7 @@ fn interpret(src: String) -> String {
     );
     let ctx = Context { map, parent: None };
 
-    match cspeudo::interpret(src, ctx) {
+    match spoodly::interpret(src, ctx) {
         // nobody wants to see the normal program output for the time being.
         Ok(_) => String::new(),
         Err(msg) => msg,

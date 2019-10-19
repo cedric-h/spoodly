@@ -1,10 +1,6 @@
-[package]
-name = "cspeudo"
-version = "0.1.0"
-authors = ["Cedric Hutchings <cedhut02@gmail.com>"]
-edition = "2018"
+[workspace]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-stdweb = "0.4.20"
+members = [
+	"lib",
+	"front",
+]

@@ -56,18 +56,18 @@ DISPLAY(a)
 <script src="src-min/ace.js" type="text/javascript" charset="utf-8"></script>
 
  <!-- WASM -->
-<script src="cspeudo.js"></script>
+<script src="front.js"></script>
 
 <script>
     var editor = ace.edit("editor");
     editor.setTheme("ace/theme/monokai");
     editor.session.setMode("ace/mode/praat");
 
-    Rust.cspeudo.then(function( cspeudo ) {
+    Rust.front.then(function( spoodly ) {
 		function updateOutput() {
 			let output = document.getElementById("output");
 			output.textContent = "Interpretation Output:\n";
-			let error = cspeudo.interpret(editor.getValue());
+			let error = spoodly.interpret(editor.getValue());
 			
 			if (error.length > 0) {
 				output.textContent += error;
