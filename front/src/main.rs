@@ -4,10 +4,9 @@ use stdweb::{__js_raw_asm, js, js_export};
 // wraps spoodly::interpret and provides the web STD.
 fn interpret(src: String) -> String {
     use spoodly::{Context, Raw, eval::Var};
-    use std::collections::HashMap;
 
-    let mut map = HashMap::new();
-    map.insert(
+    let mut webstd = Context::std();
+    webstd.map.insert(
         "DISPLAY".to_string(),
         Var::Function(Box::new(|args: Vec<Var>| {
             //eprintln!("args len: {}", args.len());
@@ -23,7 +22,7 @@ fn interpret(src: String) -> String {
             Var::Raw(Raw::Text(output))
         })),
     );
-    map.insert(
+    webstd.map.insert(
         "INPUT".to_string(),
         Var::Function(Box::new(|mut args: Vec<Var>| {
             //eprintln!("args len: {}", args.len());
@@ -40,20 +39,8 @@ fn interpret(src: String) -> String {
             Var::Raw(Raw::Text(input))
         })),
     );
-    map.insert(
-        "+".to_string(),
-        Var::Function(Box::new(|args: Vec<Var>| {
-            Var::Raw(Raw::Number(
-                args[0]
-                    .num()
-                    .and_then(|x| args[1].num().map(|y| y + x))
-                    .expect("Can only add #'s!"),
-            ))
-        })),
-    );
-    let ctx = Context { map, parent: None };
 
-    match spoodly::interpret(src, ctx) {
+    match spoodly::interpret(src, webstd) {
         // nobody wants to see the normal program output for the time being.
         Ok(_) => String::new(),
         Err(msg) => msg,
