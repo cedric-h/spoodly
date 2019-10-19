@@ -9,30 +9,60 @@ pub fn tokenize<S: Into<String>>(source: S) -> Result<Vec<Token>, String> {
     let source = source.into();
     let mut chars = source.chars().peekable();
 
-    // I want variadic push
-    macro_rules! token_push {
-        ( $($s:expr $(,)? )+ ) => { $( tokens.push($s); )+ };
-    }
+    let mut read_until_depths = Vec::new();
+    let mut bracket_depth = 0;
 
-    let mut read_until_end_of_line = false;
+    // I want variadic push
+    macro_rules! token_push_internal {
+        ( $(,)* ) => {};
+        (BlockOpen, $($tail:tt)*) => {
+            bracket_depth += 1;
+            tokens.push(BlockOpen);
+            token_push!($($tail)*);
+        };
+        (BlockClose, $($tail:tt)*) => {
+            if let Some(depth) = read_until_depths.last() {
+                //println!("There's a depth to read until");
+                if *depth == bracket_depth {
+                    //println!("It's the depth we're reading until the end of");
+                    read_until_depths.pop();
+                    tokens.push(BlockClose);
+                }
+            }
+            tokens.push(BlockClose);
+
+            #[allow(unused_assignments)]
+            bracket_depth -= 1;
+
+            token_push!($($tail)*);
+        };
+        ($name:expr, $($tail:tt)*) => {
+            tokens.push($name);
+            token_push!($($tail)*);
+        };
+    }
+    macro_rules! token_push {
+        ( $($tail:tt)* ) => { 
+            {
+                token_push_internal!($($tail)*,);
+            }
+        };
+    }
 
     while let Some(c) = chars.next() {
         match c {
             '<' => match chars.peek() {
                 Some('-') => {
                     chars.next();
-                    read_until_end_of_line = true;
-                    token_push!(StorageArrow, BlockOpen);
+                    token_push!(StorageArrow);
+
+                    read_until_depths.push(bracket_depth);
+                    tokens.push(BlockOpen);
                 }
                 _ => token_push!(LessThan),
             },
 
             '\n' => {
-                if read_until_end_of_line {
-                    //eprintln!("adding BlockClose for reading to end of line.");
-                    token_push!(BlockClose);
-                    read_until_end_of_line = false;
-                }
                 token_push!(BlockClose, BlockOpen);
             }
             '(' => token_push!(BlockOpen),
@@ -81,9 +111,6 @@ pub fn tokenize<S: Into<String>>(source: S) -> Result<Vec<Token>, String> {
                 }
             }
         }
-    }
-    if read_until_end_of_line {
-        token_push!(BlockClose);
     }
 
     token_push!(BlockClose, BlockClose);
