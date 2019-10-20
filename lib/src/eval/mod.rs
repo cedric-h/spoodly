@@ -113,34 +113,58 @@ impl Evaluator {
 
 #[test]
 fn test_eval() {
-    fn eval<S: Into<String>>(source: S) -> Var {
-        Evaluator::new(Context::std())
+    fn eval<S: Into<String>>(source: S) -> String {
+        use std::sync::{Arc, Mutex};
+        let mut testing_std = Context::std();
+        let stdout = Arc::new(Mutex::new(String::new()));
+
+        testing_std.map.insert(
+            "DISPLAY".to_string(),
+            Var::Function({
+                let stdout = stdout.clone();
+                Box::new(move |args: Vec<Var>| {
+                    let output = args.iter().fold(String::new(), |acc, arg| {
+                        format!("{} {}", acc, arg).trim().to_owned()
+                    });
+                    let mut stdout = stdout.lock().unwrap();
+                    stdout.push_str(&output);
+                    stdout.push('\n');
+                    Var::Raw(Raw::Text(output))
+                })
+            }),
+        );
+
+
+        Evaluator::new(testing_std)
             .eval(
                 vec![super::parse(source.into()).expect("couldn't parse source in eval test")],
                 0,
             )
-            .expect("error evaluating")
-    }
-    fn eval_raw<S: Into<String>>(source: S) -> Raw {
-        match eval(source) {
-            Var::Raw(r) => r,
-            _ => panic!("eval_raw can't return that; must be function or list"),
-        }
-    }
+            .expect("error evaluating");
 
-    assert_eq!(eval_raw("DISPLAY(3)"), Raw::Text("3".to_string()));
-
-    assert_eq!(eval_raw("3+2+7"), Raw::Number(12.0),);
+        let output = stdout.lock().unwrap().to_string();
+        output
+    }
 
     assert_eq!(
-        eval_raw(
+        eval("DISPLAY(3)"),
+        "3\n".to_string()
+    );
+
+    assert_eq!(
+        eval("3+2+7"),
+        "".to_string()
+    );
+
+    assert_eq!(
+        eval(
             "s<-3+2+7
              DISPLAY(s)"
         ),
-        Raw::Text("12".to_string())
+        "12\n".to_string(),
     );
     assert_eq!(
-        eval_raw(
+        eval(
             "\
             s <- 3
             l <- 4
@@ -153,8 +177,6 @@ fn test_eval() {
             DISPLAY(a)\
         "
         ),
-        //Raw::Text("14".to_string()),
-        //Raw::Text("1".to_string()),
-        Raw::Text("4".to_string()),
+        "14\n1\n4\n".to_string()
     )
 }
