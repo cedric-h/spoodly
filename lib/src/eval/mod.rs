@@ -40,7 +40,9 @@ impl Evaluator {
                     let mut result = self.eval(children, new_ctx)?;
                     if let Var::List(mut children) = result {
                         result = if children.len() > 0 {
-                            children.pop().expect("length was greater than one but pop yielded nothing")
+                            children
+                                .pop()
+                                .expect("length was greater than one but pop yielded nothing")
                         } else {
                             Var::List(vec![])
                         }
@@ -151,8 +153,8 @@ fn test_eval() {
             DISPLAY(a)\
         "
         ),
-            //Raw::Text("14".to_string()),
-            //Raw::Text("1".to_string()),
-            Raw::Text("4".to_string()),
+        //Raw::Text("14".to_string()),
+        //Raw::Text("1".to_string()),
+        Raw::Text("4".to_string()),
     )
 }

@@ -45,9 +45,8 @@ impl Parser {
                     match token {
                         Token::BlockOpen => ast.push(Node::Block(block_nodes)),
                         Token::ArgsOpen => ast.push(Node::List(block_nodes)),
-                        _ => {},
+                        _ => {}
                     }
-
                 }
                 Token::Identifier(a) => {
                     match self
@@ -77,10 +76,17 @@ impl Parser {
                             println!("fn");
                             ast.push(Node::Call(
                                 a,
-                                match self.parse(Ast::new())?.pop().ok_or("no args for function".to_string())? {
+                                match self
+                                    .parse(Ast::new())?
+                                    .pop()
+                                    .ok_or("no args for function".to_string())?
+                                {
                                     Node::List(items) => items,
-                                    _ => return Err("Only Lists can be used as function arguments".to_string()),
-                                }
+                                    _ => {
+                                        return Err("Only Lists can be used as function arguments"
+                                            .to_string())
+                                    }
+                                },
                             ));
                         }
 
@@ -102,12 +108,12 @@ impl Parser {
                     let left = ast.pop().ok_or("add what dude?".to_string())?;
                     ast.push(Node::Call(
                         op_name.clone(),
-                        vec!(
+                        vec![
                             left,
                             self.parse(Ast::new())?
                                 .pop()
                                 .ok_or(&format!("can't {} nothing", op_name))?,
-                        ),
+                        ],
                     ));
                 }
                 _ => {}
@@ -154,20 +160,16 @@ fn test_parse() {
 
     assert_eq!(
         parse("3+2+7"),
-        Ok(
-            Call(
-                "+".to_string(),
-                vec!(
-                    Call(
-                        "+".to_string(),
-                        vec!(
-                            Value(Raw::Number(3.0)),
-                            Value(Raw::Number(2.0)),
-                        ),
-                    ),
-                    Value(Raw::Number(7.0)),
-                )
-            )),
+        Ok(Call(
+            "+".to_string(),
+            vec!(
+                Call(
+                    "+".to_string(),
+                    vec!(Value(Raw::Number(3.0)), Value(Raw::Number(2.0)),),
+                ),
+                Value(Raw::Number(7.0)),
+            )
+        )),
     );
 
     assert_eq!(
@@ -179,10 +181,7 @@ fn test_parse() {
                 vec![
                     Call(
                         "+".to_string(),
-                        vec!(
-                            Value(Raw::Number(3.0)),
-                            Value(Raw::Number(2.0)),
-                        ),
+                        vec!(Value(Raw::Number(3.0)), Value(Raw::Number(2.0)),),
                     ),
                     Value(Raw::Number(7.0)),
                 ]

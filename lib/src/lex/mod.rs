@@ -42,7 +42,7 @@ pub fn tokenize<S: Into<String>>(source: S) -> Result<Vec<Token>, String> {
         };
     }
     macro_rules! token_push {
-        ( $($tail:tt)* ) => { 
+        ( $($tail:tt)* ) => {
             {
                 token_push_internal!($($tail)*,);
             }
