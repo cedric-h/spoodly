@@ -130,7 +130,7 @@ fn test_eval() {
                     });
                     let mut stdout = stdout.lock().unwrap();
                     stdout.push_str(&output);
-                    //stdout.push('\n');
+                    stdout.push(' ');
                     Var::Raw(Raw::Text(output))
                 })
             }),
