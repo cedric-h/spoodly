@@ -69,7 +69,7 @@ pub fn tokenize<S: Into<String>>(source: S) -> Result<Vec<Token>, String> {
             '}' => token_push!(BlockClose),
             '(' => token_push!(ArgsOpen),
             ')' => token_push!(ArgsClose),
-            '+' | '-' | '*' | '/' | '^' => token_push!(BinaryOperation(c.to_string())),
+            '+' | '-' | '*' | '/' => token_push!(BinaryOperation(c.to_string())),
             c => {
                 if c.is_whitespace() {
                     // do nothing
@@ -104,6 +104,9 @@ pub fn tokenize<S: Into<String>>(source: S) -> Result<Vec<Token>, String> {
                     } else if let Ok(n) = name.parse() {
                         // numbers
                         token_push!(Number(n));
+                    } else if name == "MOD" {
+                        // special case for the MOD operator
+                        token_push!(BinaryOperation(name.to_string()))
                     } else {
                         // then it's gotta be an identifier.
                         token_push!(Identifier(name));

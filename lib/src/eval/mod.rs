@@ -1,6 +1,9 @@
 mod var;
 pub use var::Var;
 
+mod param;
+pub use param::Parameters;
+
 mod context;
 pub use context::Context;
 
@@ -34,25 +37,18 @@ impl Evaluator {
                 // Block is like a list, except the commands inside get their own scope
                 // and only the last element is returned.
                 Node::Block(children) => {
-                    let children = children.iter().rev().map(|x| x.clone()).collect();
                     eprintln!("evaluating block, depth: {}", ctx);
-                    let new_ctx = self.new_ctx(ctx);
-                    let mut result = self.eval(children, new_ctx)?;
-                    if let Var::List(mut children) = result {
-                        result = if children.len() > 0 {
-                            children
-                                .pop()
-                                .expect("length was greater than one but pop yielded nothing")
-                        } else {
-                            Var::List(vec![])
-                        }
-                    }
+
+                    // run the block in a new scope, reverse the nodes because they're popped in.
+                    let new = self.new_ctx(ctx);
+                    let result = self.eval(children.into_iter().rev().collect(), new)?;
+
+                    // later we'll probably need to figure out return statements.
 
                     vars.push(result)
                 }
                 Node::List(children) => {
-                    let children = children.iter().rev().map(|x| x.clone()).collect();
-                    vars.push(self.eval(children, ctx)?)
+                    vars.push(self.eval(children.into_iter().rev().collect(), ctx)?);
                 }
                 Node::Assign(id, val_node) => {
                     let to = self.eval(vec![*val_node], ctx)?;
@@ -64,7 +60,7 @@ impl Evaluator {
                     let arg = self.eval(args, ctx)?;
 
                     vars.push(self.fetch(ctx, id)?.call(match arg {
-                        Var::List(args) => args,
+                        Var::List(args) => args.into_iter().rev().collect(),
                         _ => vec![arg],
                     })?);
                 }
@@ -114,6 +110,12 @@ impl Evaluator {
 #[test]
 fn test_eval() {
     fn eval<S: Into<String>>(source: S) -> String {
+        eval_ast(vec![
+            super::parse(source.into()).expect("couldn't parse source in eval test")
+        ])
+    }
+
+    fn eval_ast(ast: Ast) -> String {
         use std::sync::{Arc, Mutex};
         let mut testing_std = Context::std();
         let stdout = Arc::new(Mutex::new(String::new()));
@@ -122,7 +124,7 @@ fn test_eval() {
             "DISPLAY".to_string(),
             Var::Function({
                 let stdout = stdout.clone();
-                Box::new(move |args: Vec<Var>| {
+                Box::new(move |Parameters(args): Parameters| {
                     let output = args.iter().fold(String::new(), |acc, arg| {
                         format!("{} {}", acc, arg).trim().to_owned()
                     });
@@ -134,27 +136,17 @@ fn test_eval() {
             }),
         );
 
-
         Evaluator::new(testing_std)
-            .eval(
-                vec![super::parse(source.into()).expect("couldn't parse source in eval test")],
-                0,
-            )
+            .eval(ast, 0)
             .expect("error evaluating");
 
         let output = stdout.lock().unwrap().to_string();
         output
     }
 
-    assert_eq!(
-        eval("DISPLAY(3)"),
-        "3\n".to_string()
-    );
+    assert_eq!(eval("DISPLAY(3)"), "3\n".to_string());
 
-    assert_eq!(
-        eval("3+2+7"),
-        "".to_string()
-    );
+    assert_eq!(eval("3+2+7"), "".to_string());
 
     assert_eq!(
         eval(
@@ -163,13 +155,25 @@ fn test_eval() {
         ),
         "12\n".to_string(),
     );
+
+    assert_eq!(
+        eval_ast(vec![Node::Call(
+            "DISPLAY".to_string(),
+            vec![Node::Value(Raw::Number(-3.0))],
+        )]),
+        "-3\n".to_string(),
+    );
+
+    assert_eq!(eval("DISPLAY(3+2-7)"), "-2\n".to_string(),);
+    assert_eq!(eval("DISPLAY(3/2*4 + 1 MOD 6)"), "1\n".to_string(),);
+
     assert_eq!(
         eval(
             "\
             s <- 3
             l <- 4
             a <- 1
-            s <- a + 5 +4  + 4
+            s <- a + 5+4  + 4
             l <- a
             a <- a + 3
             DISPLAY(s)

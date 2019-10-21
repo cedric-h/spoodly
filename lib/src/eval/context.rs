@@ -1,4 +1,5 @@
-use crate::{eval::Var, Raw};
+use super::{Parameters, Var};
+use crate::Raw;
 use std::collections::HashMap;
 
 /// This guys stores which variables are available in a given scope.
@@ -15,9 +16,24 @@ impl Context {
     /// STD stands for "standard" because this is the dictionary of standard functions.
     pub fn std() -> Self {
         let mut map = HashMap::new();
+
+        macro_rules! insert_number_ops {
+            ( $( $op:tt : $op_name:tt ( $op_symbol:expr ) )* ) => {
+                $(map.insert(
+                    $op_symbol.to_string(),
+                    Var::Function(Box::new(|args: Parameters| {
+                        let args = args.nums().expect(
+                            concat!("Can only ", stringify!($op_name), " numbers!")
+                        );
+                        Var::Raw(Raw::Number(args[0] $op args[1]))
+                    })),
+                );)*
+            }
+        }
+
         map.insert(
             "DISPLAY".to_string(),
-            Var::Function(Box::new(|args: Vec<Var>| {
+            Var::Function(Box::new(|Parameters(args): Parameters| {
                 let output = args.iter().fold(String::new(), |acc, arg| {
                     format!("{} {}", acc, arg).trim().to_owned()
                 });
@@ -25,16 +41,12 @@ impl Context {
                 Var::Raw(Raw::Text(output))
             })),
         );
-        map.insert(
-            "+".to_string(),
-            Var::Function(Box::new(|args: Vec<Var>| {
-                Var::Raw(Raw::Number(
-                    args[0]
-                        .num()
-                        .and_then(|x| args[1].num().map(|y| y + x))
-                        .expect("Can only add #'s!"),
-                ))
-            })),
+        insert_number_ops!(
+            +: add("+")
+            -: subtract("-")
+            /: divide("/")
+            *: multiply("*")
+            %: multiply("MOD")
         );
 
         Self { map, parent: None }

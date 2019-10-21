@@ -1,4 +1,4 @@
-use super::Raw;
+use super::{Parameters, Raw};
 use std::fmt;
 
 /// A value that can be manipulated.
@@ -10,7 +10,7 @@ use std::fmt;
 pub enum Var {
     Raw(Raw),
     List(Vec<Var>),
-    Function(Box<dyn Fn(Vec<Var>) -> Var>),
+    Function(Box<dyn Fn(Parameters) -> Var>),
 }
 impl fmt::Display for Var {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -44,7 +44,7 @@ impl Var {
         match self {
             Raw(_) => Err(format!("{} isn't a function!", self)),
             List(_) => Err(format!("Can't call list {}!", self)),
-            Function(f) => Ok((*f)(args)),
+            Function(f) => Ok((*f)(Parameters(args))),
         }
     }
 
@@ -54,14 +54,18 @@ impl Var {
         match self {
             Var::Raw(r) => match r {
                 Raw::Number(n) => Ok(*n),
-                Raw::Text(t) => {
-                    if let Ok(n) = t.parse() {
-                        Ok(n)
-                    } else {
-                        Err("String contained unparseable number.".to_string())
-                    }
-                }
+                Raw::Text(_) => Err("Can't turn Text into numbers".to_string()),
             },
+            _ => Err("Can't parse functions into numbers".to_string()),
+        }
+    }
+
+    pub fn string(&self) -> Result<String, String> {
+        match self {
+            Var::Raw(r) => Ok(match r {
+                Raw::Number(n) => format!("{}", n),
+                Raw::Text(t) => t.to_string(),
+            }),
             _ => Err("Can't parse functions into numbers".to_string()),
         }
     }

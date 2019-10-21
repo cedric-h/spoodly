@@ -190,6 +190,20 @@ fn test_parse() {
     );
 
     assert_eq!(
+        parse("100 - 42 + 1"),
+        Ok(Call(
+            "+".to_string(),
+            vec![
+                Call(
+                    "-".to_string(),
+                    vec![Value(Raw::Number(100.0)), Value(Raw::Number(42.0)),]
+                ),
+                Value(Raw::Number(1.0)),
+            ]
+        )),
+    );
+
+    assert_eq!(
         parse(
             "s <- 3
              DISPLAY(s)"
