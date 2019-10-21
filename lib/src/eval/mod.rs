@@ -130,7 +130,7 @@ fn test_eval() {
                     });
                     let mut stdout = stdout.lock().unwrap();
                     stdout.push_str(&output);
-                    stdout.push('\n');
+                    //stdout.push('\n');
                     Var::Raw(Raw::Text(output))
                 })
             }),
@@ -144,7 +144,7 @@ fn test_eval() {
         output
     }
 
-    assert_eq!(eval("DISPLAY(3)"), "3\n".to_string());
+    assert_eq!(eval("DISPLAY(3)"), "3 ".to_string());
 
     assert_eq!(eval("3+2+7"), "".to_string());
 
@@ -153,7 +153,7 @@ fn test_eval() {
             "s<-3+2+7
              DISPLAY(s)"
         ),
-        "12\n".to_string(),
+        "12 ".to_string(),
     );
 
     assert_eq!(
@@ -161,26 +161,26 @@ fn test_eval() {
             "DISPLAY".to_string(),
             vec![Node::Value(Raw::Number(-3.0))],
         )]),
-        "-3\n".to_string(),
+        "-3 ".to_string(),
     );
 
-    assert_eq!(eval("DISPLAY(3+2-7)"), "-2\n".to_string(),);
+    assert_eq!(eval("DISPLAY(3+2-7)"), "-2 ".to_string(),);
 
-    assert_eq!(eval("DISPLAY(3/2*4 + 1 MOD 6)"), "1\n".to_string(),);
+    assert_eq!(eval("DISPLAY(3/2*4 + 1 MOD 6)"), "1 ".to_string(),);
 
-    assert_eq!(eval("DISPLAY(3 = 4)"), "false\n".to_string(),);
-    assert_eq!(eval("DISPLAY(4 = 4)"), "true\n".to_string(),);
-    //assert_eq!(eval("DISPLAY(4=4.0)"), "true\n".to_string(),);
-    assert_eq!(eval("DISPLAY(\"hi\" = \"no\")"), "false\n".to_string(),);
-    assert_eq!(eval("DISPLAY(\"hi\" = \"hi\")"), "true\n".to_string(),);
-    assert_eq!(eval("DISPLAY(true = false)"), "false\n".to_string(),);
-    assert_eq!(eval("DISPLAY(false = true)"), "false\n".to_string(),);
-    assert_eq!(eval("DISPLAY(true = true)"), "true\n".to_string(),);
-    assert_eq!(eval("DISPLAY(false = false)"), "true\n".to_string(),);
+    assert_eq!(eval("DISPLAY(3 = 4)"), "false ".to_string(),);
+    assert_eq!(eval("DISPLAY(4 = 4)"), "true ".to_string(),);
+    //assert_eq!(eval("DISPLAY(4=4.0)"), "true ".to_string(),);
+    assert_eq!(eval("DISPLAY(\"hi\" = \"no\")"), "false ".to_string(),);
+    assert_eq!(eval("DISPLAY(\"hi\" = \"hi\")"), "true ".to_string(),);
+    assert_eq!(eval("DISPLAY(true = false)"), "false ".to_string(),);
+    assert_eq!(eval("DISPLAY(false = true)"), "false ".to_string(),);
+    assert_eq!(eval("DISPLAY(true = true)"), "true ".to_string(),);
+    assert_eq!(eval("DISPLAY(false = false)"), "true ".to_string(),);
 
-    assert_eq!(eval("DISPLAY(3 > 4)"), "false\n".to_string(),);
-    assert_eq!(eval("DISPLAY(3 < 4)"), "true\n".to_string(),);
-    assert_eq!(eval("DISPLAY(3<4)"), "true\n".to_string(),);
+    assert_eq!(eval("DISPLAY(3 > 4)"), "false ".to_string(),);
+    assert_eq!(eval("DISPLAY(3 < 4)"), "true ".to_string(),);
+    assert_eq!(eval("DISPLAY(3<4)"), "true ".to_string(),);
 
     assert_eq!(
         eval(
@@ -196,6 +196,6 @@ fn test_eval() {
             DISPLAY(a)\
         "
         ),
-        "14\n1\n4\n".to_string()
+        "14 1 4 ".to_string()
     )
 }
