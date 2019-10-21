@@ -165,7 +165,22 @@ fn test_eval() {
     );
 
     assert_eq!(eval("DISPLAY(3+2-7)"), "-2\n".to_string(),);
+
     assert_eq!(eval("DISPLAY(3/2*4 + 1 MOD 6)"), "1\n".to_string(),);
+
+    assert_eq!(eval("DISPLAY(3 = 4)"), "false\n".to_string(),);
+    assert_eq!(eval("DISPLAY(4 = 4)"), "true\n".to_string(),);
+    //assert_eq!(eval("DISPLAY(4=4.0)"), "true\n".to_string(),);
+    assert_eq!(eval("DISPLAY(\"hi\" = \"no\")"), "false\n".to_string(),);
+    assert_eq!(eval("DISPLAY(\"hi\" = \"hi\")"), "true\n".to_string(),);
+    assert_eq!(eval("DISPLAY(true = false)"), "false\n".to_string(),);
+    assert_eq!(eval("DISPLAY(false = true)"), "false\n".to_string(),);
+    assert_eq!(eval("DISPLAY(true = true)"), "true\n".to_string(),);
+    assert_eq!(eval("DISPLAY(false = false)"), "true\n".to_string(),);
+
+    assert_eq!(eval("DISPLAY(3 > 4)"), "false\n".to_string(),);
+    assert_eq!(eval("DISPLAY(3 < 4)"), "true\n".to_string(),);
+    assert_eq!(eval("DISPLAY(3<4)"), "true\n".to_string(),);
 
     assert_eq!(
         eval(

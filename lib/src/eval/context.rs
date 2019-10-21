@@ -18,19 +18,27 @@ impl Context {
         let mut map = HashMap::new();
 
         macro_rules! insert_number_ops {
-            ( $( $op:tt : $op_name:tt ( $op_symbol:expr ) )* ) => {
+            ( $( $op:tt : $( $op_name:ident )* ( $op_symbol:expr, $convert:tt, $type:tt ) )* ) => {
                 $(map.insert(
                     $op_symbol.to_string(),
                     Var::Function(Box::new(|args: Parameters| {
-                        let args = args.nums().expect(
-                            concat!("Can only ", stringify!($op_name), " numbers!")
+                        let args = args.$convert().expect(
+                            concat!("Can only ", $( stringify!($op_name) , )* " numbers!")
                         );
-                        Var::Raw(Raw::Number(args[0] $op args[1]))
+                        Var::Raw(Raw::$type(args[0] $op args[1]))
                     })),
                 );)*
             }
         }
 
+        map.insert(
+            "true".to_string(),
+            Var::Raw(Raw::Bool(true))
+        );
+        map.insert(
+            "false".to_string(),
+            Var::Raw(Raw::Bool(false))
+        );
         map.insert(
             "DISPLAY".to_string(),
             Var::Function(Box::new(|Parameters(args): Parameters| {
@@ -41,12 +49,37 @@ impl Context {
                 Var::Raw(Raw::Text(output))
             })),
         );
+        map.insert(
+            "=".to_string(),
+            Var::Function(Box::new(|args: Parameters| {
+                Var::Raw(Raw::Bool(
+                    if let Ok(nums) = args.nums() {
+                        nums[0] == nums[1]
+                    } else if let Ok(bools) = args.booleans() {
+                        bools[0] == bools[1]
+                    } else if let Ok(strings) = args.strings() {
+                        strings[0] == strings[1]
+                    } else {
+                        false
+                    }
+                 ))
+            }))
+        );
+
+        // format:
+        /* Rust Version: long name("pseudo version", conversion function, output type) */
         insert_number_ops!(
-            +: add("+")
-            -: subtract("-")
-            /: divide("/")
-            *: multiply("*")
-            %: multiply("MOD")
+            +: add          ("+",   nums,       Number  )
+            -: subtract     ("-",   nums,       Number  )
+            /: divide       ("/",   nums,       Number  )
+            *: multiply     ("*",   nums,       Number  )
+            %: modulo       ("MOD", nums,       Number  )
+
+            >: less than    (">",   nums,       Bool    )
+            <: greater than ("<",   nums,       Bool    )
+
+            &&: AND         ("AND", booleans,   Bool    )
+            ||: OR          ("OR",  booleans,   Bool    )
         );
 
         Self { map, parent: None }

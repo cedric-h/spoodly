@@ -43,9 +43,7 @@ pub fn tokenize<S: Into<String>>(source: S) -> Result<Vec<Token>, String> {
     }
     macro_rules! token_push {
         ( $($tail:tt)* ) => {
-            {
-                token_push_internal!($($tail)*,);
-            }
+            { token_push_internal!($($tail)*,); }
         };
     }
 
@@ -59,7 +57,7 @@ pub fn tokenize<S: Into<String>>(source: S) -> Result<Vec<Token>, String> {
                     read_until_depths.push(bracket_depth);
                     tokens.push(BlockOpen);
                 }
-                _ => token_push!(LessThan),
+                _ => token_push!(BinaryOperation(c.to_string())),
             },
 
             '\n' => {
@@ -69,7 +67,7 @@ pub fn tokenize<S: Into<String>>(source: S) -> Result<Vec<Token>, String> {
             '}' => token_push!(BlockClose),
             '(' => token_push!(ArgsOpen),
             ')' => token_push!(ArgsClose),
-            '+' | '-' | '*' | '/' => token_push!(BinaryOperation(c.to_string())),
+            '+' | '-' | '*' | '/' | '=' | '>' => token_push!(BinaryOperation(c.to_string())),
             c => {
                 if c.is_whitespace() {
                     // do nothing
@@ -104,12 +102,14 @@ pub fn tokenize<S: Into<String>>(source: S) -> Result<Vec<Token>, String> {
                     } else if let Ok(n) = name.parse() {
                         // numbers
                         token_push!(Number(n));
-                    } else if name == "MOD" {
-                        // special case for the MOD operator
-                        token_push!(BinaryOperation(name.to_string()))
                     } else {
-                        // then it's gotta be an identifier.
-                        token_push!(Identifier(name));
+                        match name.as_ref() {
+                            "MOD" | "AND" | "OR" => {
+                                token_push!(BinaryOperation(name.to_string()))
+                            }
+                            // then it's gotta be an identifier.
+                            _ => token_push!(Identifier(name)),
+                        }
                     }
                 } else {
                     eprintln!("ignoring {}", c);

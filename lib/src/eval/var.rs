@@ -20,6 +20,7 @@ impl fmt::Display for Var {
             Var::Raw(r) => match r {
                 Text(t) => write!(f, "\"{}\"", t),
                 Number(n) => write!(f, "{}", n),
+                Bool(b) => write!(f, "{}", b),
             },
             Var::List(l) => {
                 write!(f, "[")?;
@@ -54,7 +55,8 @@ impl Var {
         match self {
             Var::Raw(r) => match r {
                 Raw::Number(n) => Ok(*n),
-                Raw::Text(_) => Err("Can't turn Text into numbers".to_string()),
+                Raw::Text(_) => Err("Can't turn Text into number".to_string()),
+                Raw::Bool(_) => Err("Can't turn Bool into number".to_string()),
             },
             _ => Err("Can't parse functions into numbers".to_string()),
         }
@@ -64,9 +66,21 @@ impl Var {
         match self {
             Var::Raw(r) => Ok(match r {
                 Raw::Number(n) => format!("{}", n),
+                Raw::Bool(b) => format!("{}", b),
                 Raw::Text(t) => t.to_string(),
             }),
             _ => Err("Can't parse functions into numbers".to_string()),
+        }
+    }
+
+    pub fn boolean(&self) -> Result<bool, String> {
+        match self {
+            Var::Raw(r) => match r {
+                Raw::Number(_) => Err("Can't turn Number into bool".to_string()),
+                Raw::Text(_) => Err("Can't turn Text into bool".to_string()),
+                Raw::Bool(b) => Ok(*b),
+            },
+            _ => Err("Can't parse functions into booleans".to_string()),
         }
     }
 }

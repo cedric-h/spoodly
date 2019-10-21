@@ -1,7 +1,6 @@
 #[derive(Clone, PartialEq, Debug)]
 pub enum Token {
     StorageArrow,
-    LessThan,
     ArgsOpen,
     ArgsClose,
     BlockOpen,

@@ -21,4 +21,5 @@ pub fn interpret<S: Into<String>>(src: S, ctx: Context) -> Result<eval::Var, Str
 pub enum Raw {
     Number(f64),
     Text(String),
+    Bool(bool),
 }
