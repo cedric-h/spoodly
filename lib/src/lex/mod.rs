@@ -104,9 +104,7 @@ pub fn tokenize<S: Into<String>>(source: S) -> Result<Vec<Token>, String> {
                         token_push!(Number(n));
                     } else {
                         match name.as_ref() {
-                            "MOD" | "AND" | "OR" => {
-                                token_push!(BinaryOperation(name.to_string()))
-                            }
+                            "MOD" | "AND" | "OR" => token_push!(BinaryOperation(name.to_string())),
                             // then it's gotta be an identifier.
                             _ => token_push!(Identifier(name)),
                         }

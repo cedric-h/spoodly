@@ -22,8 +22,8 @@ macro_rules! conversion_wrapper {
 impl Parameters {
     #[rustfmt::skip]
     conversion_wrapper!(
-        (nums    , num    , f64   )
-        (strings , string , String)
-        (booleans, boolean, bool)
+        (numbers , number , f64     )
+        (strings , string , String  )
+        (booleans, boolean, bool    )
     );
 }

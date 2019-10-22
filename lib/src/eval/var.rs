@@ -39,6 +39,7 @@ impl fmt::Display for Var {
 impl Var {
     /// Yields the result of calling the function if the variable is one, and a String explaining
     /// that it isn't a function if it isn't.
+    #[inline]
     pub fn call(&self, args: Vec<Var>) -> Result<Var, String> {
         use Var::*;
 
@@ -51,7 +52,8 @@ impl Var {
 
     /// Returns a number if the given variable can be turned into one, and a message explaining why
     /// if it can't.
-    pub fn num(&self) -> Result<f64, String> {
+    #[inline]
+    pub fn number(&self) -> Result<f64, String> {
         match self {
             Var::Raw(r) => match r {
                 Raw::Number(n) => Ok(*n),
@@ -62,6 +64,7 @@ impl Var {
         }
     }
 
+    #[inline]
     pub fn string(&self) -> Result<String, String> {
         match self {
             Var::Raw(r) => Ok(match r {
@@ -73,6 +76,7 @@ impl Var {
         }
     }
 
+    #[inline]
     pub fn boolean(&self) -> Result<bool, String> {
         match self {
             Var::Raw(r) => match r {

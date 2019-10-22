@@ -17,28 +17,59 @@ impl Context {
     pub fn std() -> Self {
         let mut map = HashMap::new();
 
-        macro_rules! insert_number_ops {
-            ( $( $op:tt : $( $op_name:ident )* ( $op_symbol:expr, $convert:tt, $type:tt ) )* ) => {
+        macro_rules! insert_ops {
+            ( $(
+                $op:tt : $( $op_name:ident )* (
+                    $op_symbol:expr,
+                    $( ( $convert:tt, $type:tt $(: $postfix:tt )? $(| $prefix:tt )? ) $(,)? )+
+                ) 
+            )* ) => {
                 $(map.insert(
                     $op_symbol.to_string(),
                     Var::Function(Box::new(|args: Parameters| {
-                        let args = args.$convert().expect(
-                            concat!("Can only ", $( stringify!($op_name) , )* " numbers!")
-                        );
-                        Var::Raw(Raw::$type(args[0] $op args[1]))
+                        $( if let Ok(args) = args.$convert() {
+                            return Var::Raw(Raw::$type(args[0]$(.$postfix())? $op $($prefix)? args[1]));
+                        };)+
+                        Var::Raw(Raw::Text(concat!(
+                            "Can only apply the ", concat!( $( stringify!($op_name), " ", )* ),
+                            "operation to ", operator_error!(first: $( $convert ,)+ ),
+                        ).to_string()))
                     })),
                 );)*
-            }
+            };
+
+        }
+        macro_rules! operator_error {
+            ( first: $first:ident, $($tail:tt, )* ) => {
+                concat!(
+                    stringify!($first),
+                    operator_error!( : $( $tail , )* ),
+                )
+            };
+
+            ( : $middle:ident, $($tail:tt, )+ ) => {
+                concat!(
+                    ", ",
+                    stringify!($middle),
+                    operator_error!( : $( $tail , )+ ),
+                )
+            };
+
+            // ending when more than one type is involved
+            ( : $last:ident , ) => {
+                concat!(
+                    " or ",
+                    stringify!($last),
+                    "!",
+                )
+            };
+
+            // ending when only one was involved.
+            ( : ) => { "!" }
         }
 
-        map.insert(
-            "true".to_string(),
-            Var::Raw(Raw::Bool(true))
-        );
-        map.insert(
-            "false".to_string(),
-            Var::Raw(Raw::Bool(false))
-        );
+        map.insert("true".to_string(), Var::Raw(Raw::Bool(true)));
+        map.insert("false".to_string(), Var::Raw(Raw::Bool(false)));
         map.insert(
             "DISPLAY".to_string(),
             Var::Function(Box::new(|Parameters(args): Parameters| {
@@ -49,37 +80,22 @@ impl Context {
                 Var::Raw(Raw::Text(output))
             })),
         );
-        map.insert(
-            "=".to_string(),
-            Var::Function(Box::new(|args: Parameters| {
-                Var::Raw(Raw::Bool(
-                    if let Ok(nums) = args.nums() {
-                        nums[0] == nums[1]
-                    } else if let Ok(bools) = args.booleans() {
-                        bools[0] == bools[1]
-                    } else if let Ok(strings) = args.strings() {
-                        strings[0] == strings[1]
-                    } else {
-                        false
-                    }
-                 ))
-            }))
-        );
 
         // format:
         /* Rust Version: long name("pseudo version", conversion function, output type) */
-        insert_number_ops!(
-            +: add          ("+",   nums,       Number  )
-            -: subtract     ("-",   nums,       Number  )
-            /: divide       ("/",   nums,       Number  )
-            *: multiply     ("*",   nums,       Number  )
-            %: modulo       ("MOD", nums,       Number  )
+        insert_ops!(
+            ==: equals      ("=",   (numbers, Bool), (booleans, Bool), (strings, Bool))
+            +: add          ("+",   (numbers, Number), (strings, Text :clone |&))
+            -: subtract     ("-",   (numbers, Number))
+            /: divide       ("/",   (numbers, Number))
+            *: multiply     ("*",   (numbers, Number))
+            %: modulo       ("MOD", (numbers, Number))
 
-            >: less than    (">",   nums,       Bool    )
-            <: greater than ("<",   nums,       Bool    )
+            >: less than    (">",   (numbers, Bool))
+            <: greater than ("<",   (numbers, Bool))
 
-            &&: AND         ("AND", booleans,   Bool    )
-            ||: OR          ("OR",  booleans,   Bool    )
+            &&: AND         ("AND", (booleans, Bool))
+            ||: OR          ("OR",  (booleans, Bool))
         );
 
         Self { map, parent: None }
