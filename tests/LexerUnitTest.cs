@@ -1,6 +1,6 @@
 using NUnit.Framework;
 
-namespace tests
+namespace tests.Lexer
 {
     [TestFixture]
     public class TestLexer

@@ -5,7 +5,11 @@
             "label": "build",
             "type": "shell",
             "command": "dotnet build ${workspaceFolder}/spoodly.sln",
-            "problemMatcher": []
+            "problemMatcher": "$msCompile",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
         }
     ]
 }
