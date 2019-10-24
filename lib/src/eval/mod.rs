@@ -59,19 +59,31 @@ impl Evaluator {
                     //eprintln!("call arg_node: {:?}", arg_node);
                     let arg = self.eval(args, ctx)?;
 
-                    vars.push(self.fetch(ctx, id)?.call(match arg {
-                        Var::List(args) => args.into_iter().rev().collect(),
-                        _ => vec![arg],
-                    })?);
-                }
-                Node::Value(raw) => vars.push(Var::Raw(raw)),
-                Node::Var(id) => vars.push(match self.fetch(ctx, id)? {
-                    Var::Raw(r) => Var::Raw(r.clone()),
-                    Var::Function(_) => {
-                        return Err("no using functions as variables yet".to_string())
+                    match self.fetch(ctx, id)? {
+                        Var::Function(f) => vars.push(f(Parameters(match arg {
+                            Var::List(args) => args.into_iter().rev().collect(),
+                            _ => vec![arg],
+                        }))),
+                        Var::Lambda(ast) => {
+                            let ast = ast.clone();
+                            vars.push(self.eval(vec![ast], ctx)?);
+                        }
+                        _ => panic!("can't call that"),
                     }
-                    Var::List(_) => return Err("no using lists as variables yet".to_string()),
-                }),
+                }
+                Node::Lambda(ast) => vars.push(self.eval(vec![*ast], ctx)?),
+                Node::Value(raw) => vars.push(Var::Raw(raw)),
+                Node::Var(id) => match id.as_ref() {
+                    "IF" => {}
+                    id => vars.push(match self.fetch(ctx, id)? {
+                        Var::Raw(r) => Var::Raw(r.clone()),
+                        Var::Function(_) => {
+                            return Err("no using functions as variables yet".to_string())
+                        }
+                        Var::List(_) => return Err("no using lists as variables yet".to_string()),
+                        Var::Lambda(ast) => Var::Lambda(ast.clone()),
+                    }),
+                },
             }
         }
 
@@ -145,6 +157,16 @@ fn test_eval() {
     }
 
     assert_eq!(eval("DISPLAY(3)"), "3 ".to_string());
+
+    assert_eq!(
+        eval(
+            "\
+             x <- | { DISPLAY(\"hi\") }
+             x()
+             "
+        ),
+        "\"hi\" ".to_string()
+    );
 
     assert_eq!(eval("3+2+7"), "".to_string());
 

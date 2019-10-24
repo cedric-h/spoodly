@@ -22,7 +22,7 @@ impl Context {
                 $op:tt : $( $op_name:ident )* (
                     $op_symbol:expr,
                     $( ( $convert:tt, $type:tt $(: $postfix:tt )? $(| $prefix:tt )? ) $(,)? )+
-                ) 
+                )
             )* ) => {
                 $(map.insert(
                     $op_symbol.to_string(),

@@ -60,6 +60,8 @@ pub fn tokenize<S: Into<String>>(source: S) -> Result<Vec<Token>, String> {
                 _ => token_push!(BinaryOperation(c.to_string())),
             },
 
+            '|' => token_push!(LambdaStart),
+
             '\n' => {
                 token_push!(BlockClose, BlockOpen);
             }
@@ -123,6 +125,23 @@ pub fn tokenize<S: Into<String>>(source: S) -> Result<Vec<Token>, String> {
 #[test]
 fn test_tokenize() {
     use Token::*;
+
+    assert_eq!(
+        tokenize("IF true { DISPLAY(\"hi\") }").unwrap(),
+        #[rustfmt::skip]
+        [
+            BlockOpen,
+            BlockOpen,
+                Identifier("IF".to_string()), Identifier("true".to_string()),
+                    BlockOpen,
+                        Identifier("DISPLAY".to_string()), ArgsOpen,
+                            StringLiteral("hi".to_string()),
+                        ArgsClose,
+                    BlockClose,
+            BlockClose,
+            BlockClose,
+        ]
+    );
 
     assert_eq!(
         tokenize("s <- 3").unwrap(),

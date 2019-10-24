@@ -10,6 +10,7 @@ pub enum Node {
     List(Ast),
     Value(Raw),
     Var(String),
+    Lambda(Box<Node>),
     // commands
     Assign(String, Box<Node>),
     Call(String, Vec<Node>),

@@ -1,4 +1,5 @@
 use super::{Parameters, Raw};
+use crate::parse::Node;
 use std::fmt;
 
 /// A value that can be manipulated.
@@ -10,6 +11,7 @@ use std::fmt;
 pub enum Var {
     Raw(Raw),
     List(Vec<Var>),
+    Lambda(Node),
     Function(Box<dyn Fn(Parameters) -> Var>),
 }
 impl fmt::Display for Var {
@@ -40,12 +42,13 @@ impl Var {
     /// Yields the result of calling the function if the variable is one, and a String explaining
     /// that it isn't a function if it isn't.
     #[inline]
-    pub fn call(&self, args: Vec<Var>) -> Result<Var, String> {
+    pub fn fn_call(&self, args: Vec<Var>) -> Result<Var, String> {
         use Var::*;
 
         match self {
             Raw(_) => Err(format!("{} isn't a function!", self)),
             List(_) => Err(format!("Can't call list {}!", self)),
+            Lambda(_) => Err(format!("Can't call lambda {} with fn_call!", self)),
             Function(f) => Ok((*f)(Parameters(args))),
         }
     }
@@ -57,10 +60,10 @@ impl Var {
         match self {
             Var::Raw(r) => match r {
                 Raw::Number(n) => Ok(*n),
-                Raw::Text(_) => Err("Can't turn Text into number".to_string()),
-                Raw::Bool(_) => Err("Can't turn Bool into number".to_string()),
+                Raw::Text(_) => Err("Can't coerce Text into number".to_string()),
+                Raw::Bool(_) => Err("Can't coerce Bool into number".to_string()),
             },
-            _ => Err("Can't parse functions into numbers".to_string()),
+            _ => Err("Can't coerce functions into numbers".to_string()),
         }
     }
 

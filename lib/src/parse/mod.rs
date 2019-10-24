@@ -98,6 +98,18 @@ impl Parser {
                         }
                     }
                 }
+                Token::LambdaStart => {
+                    // remove the lambda start
+                    self.tokens.pop();
+
+                    // get the block that comes after the lambda start
+                    let next_node = self
+                        .parse(Ast::new())?
+                        .pop()
+                        .ok_or("no block after lambda".to_string())?;
+
+                    ast.push(Node::Lambda(Box::new(next_node)));
+                }
                 Token::StringLiteral(s) => {
                     ast.push(Node::Value(Raw::Text(s)));
                 }
@@ -156,6 +168,21 @@ fn test_parse() {
     assert_eq!(
         parse("s<-3"),
         Ok(Assign("s".to_string(), Box::new(Value(Raw::Number(3.0))))),
+    );
+
+    assert_eq!(
+        parse("IF true { DISPLAY(\"hi\") }"),
+        #[rustfmt::skip]
+        Ok(Call(
+            "IF".to_string(),
+            vec![
+                Node::Var("true".to_string()),
+                Node::Lambda(Box::new(Call(
+                    "DISPLAY".to_string(), 
+                    vec!(Node::Value(Raw::Text("hi".to_string()))),
+                )))
+            ]
+        )),
     );
 
     assert_eq!(

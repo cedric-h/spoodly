@@ -5,6 +5,7 @@ pub enum Token {
     ArgsClose,
     BlockOpen,
     BlockClose,
+    LambdaStart,
     BinaryOperation(String),
     StringLiteral(String),
     Number(f64),
